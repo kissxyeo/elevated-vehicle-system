@@ -1,0 +1,15 @@
+.venv
+.venv312
+build
+dist
+backup_*
+__pycache__
+*.pyc
+*.log
+app.zip
+data.db
+static/uploads
+test_images
+test_results
+.git
+.vscode

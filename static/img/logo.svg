@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="高架车辆智能识别系统">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#1e293b"/>
+      <stop offset="1" stop-color="#0f172a"/>
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="14" fill="url(#bg)"/>
+  <!-- 车身 -->
+  <rect x="9" y="30" width="46" height="14" rx="5.5" fill="#ffffff"/>
+  <!-- 车顶与车厢 -->
+  <path d="M19 31 L23.5 23.5 H40.5 L45 31 Z" fill="#ffffff" stroke="#ffffff" stroke-width="2" stroke-linejoin="round"/>
+  <!-- 车窗 -->
+  <rect x="24.5" y="25.5" width="11" height="4.7" rx="1.6" fill="#1e293b"/>
+  <rect x="37.5" y="25.5" width="5" height="4.7" rx="1.6" fill="#1e293b"/>
+  <!-- 车灯 -->
+  <rect x="50" y="34" width="3.4" height="2.2" rx="1" fill="#1e293b"/>
+  <!-- 车轮 -->
+  <circle cx="17.5" cy="44" r="5" fill="#1e293b"/>
+  <circle cx="46.5" cy="44" r="5" fill="#1e293b"/>
+  <circle cx="17.5" cy="44" r="2.2" fill="#ffffff"/>
+  <circle cx="46.5" cy="44" r="2.2" fill="#ffffff"/>
+</svg>

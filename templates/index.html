@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>高架车辆智能识别系统</title>
+<link rel="icon" type="image/svg+xml" href="/static/img/logo.svg">
+<link rel="alternate icon" href="/static/img/favicon.ico">
+<link rel="stylesheet" href="/static/css/style.css">
+<script>
+  // 每次重新进入页面都要求登录：本次会话标记不存在则返回登录页
+  try {
+    if (sessionStorage.getItem("evs_auth") !== "1") { location.replace("/login"); }
+  } catch (e) { }
+</script>
+</head>
+<body class="app-page">
+
+<div class="layout">
+  <aside class="sidebar">
+    <div class="brand">
+      <img src="/static/img/logo.svg" alt="系统图标" class="brand-mark">
+      <div class="brand-text">
+        <h1>高架车辆智能识别系统</h1>
+        <p>ELEVATED HIGHWAY VEHICLE RECOGNITION</p>
+      </div>
+    </div>
+
+    <nav class="side-nav">
+      <button class="tab active" data-tab="detect">实时识别</button>
+      <button class="tab" data-tab="records">识别记录</button>
+      <button class="tab" data-tab="mine" hidden>我的记录</button>
+      <button class="tab" data-tab="stats">数据统计</button>
+      <button class="tab" data-tab="users" hidden>用户管理</button>
+    </nav>
+
+    <div class="side-footer">
+      <span class="status" id="chip-detector">检测：--</span>
+      <span class="user-name" id="user-name">{{ user.name if user else '管理员' }}</span>
+      <button class="btn btn-ghost btn-sm" id="btn-profile">个人中心</button>
+    </div>
+  </aside>
+
+  <main>
+
+  <div class="top-bar">
+    <span class="status status-time" id="chip-clock">--</span>
+  </div>
+
+  <!-- 实时识别 -->
+  <section id="page-detect" class="page">
+    <div class="page-head">
+      <div class="page-head-text">
+        <h2>实时识别</h2>
+        <p>上传监控图片或视频，系统自动判定车辆是否允许驶入高架</p>
+      </div>
+      <div class="mode-switch">
+        <button class="mode-btn active" data-mode="image">图片识别</button>
+        <button class="mode-btn" data-mode="video">视频识别</button>
+      </div>
+    </div>
+
+    <!-- 图片识别 -->
+    <div id="mode-image" class="detect-layout">
+      <div class="card panel">
+        <div class="card-head">
+          <h3>上传监控图片</h3>
+          <span class="hint">JPG / PNG</span>
+        </div>
+        <div id="dropzone" class="dropzone">
+          <input type="file" id="file-input" accept="image/*" hidden>
+          <div class="dz-icon" id="dz-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="4" width="18" height="16" rx="2.5"/>
+              <circle cx="8.5" cy="9.5" r="1.6"/>
+              <path d="M3 16.5l4.6-4.3 3.4 3.1 3-2.6L21 17"/>
+            </svg>
+          </div>
+          <img id="dz-preview" class="dz-preview" alt="" hidden>
+          <p id="dz-text" class="dz-text">点击或拖拽图片到此处</p>
+        </div>
+        <button id="btn-detect" class="btn btn-block">开始识别</button>
+
+        <div class="rules">
+          <p class="rules-title">高架通行规则</p>
+          <div class="rule-row"><span class="dot dot-ok"></span>小型汽车、大型客车<span class="rule-tag ok">允许通行</span></div>
+          <div class="rule-row"><span class="dot dot-bad"></span>货车、摩托车、非机动车、行人<span class="rule-tag bad">禁止通行</span></div>
+        </div>
+      </div>
+
+      <div class="card panel">
+        <div class="card-head">
+          <h3>识别结果</h3>
+          <span class="hint" id="detect-mode-label">--</span>
+        </div>
+        <div id="detect-empty" class="empty">
+          <div class="empty-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M20 6.5L9.5 17 4 11.5"/>
+            </svg>
+          </div>
+          <p>暂无结果</p>
+          <span>请先上传图片，再点击「开始识别」</span>
+        </div>
+        <div id="detect-result" hidden>
+          <div class="summary" id="summary-chips"></div>
+          <img id="annotated-img" class="annotated-img" alt="标注结果">
+          <div id="result-cards" class="result-cards"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 视频识别 -->
+    <div id="mode-video" hidden>
+      <div class="detect-layout">
+        <div class="card panel">
+          <div class="card-head">
+            <h3>上传监控视频</h3>
+            <span class="hint">MP4 / AVI / MOV</span>
+          </div>
+          <div id="video-dropzone" class="dropzone">
+            <input type="file" id="video-input" accept="video/*" hidden>
+            <div class="dz-icon" id="video-dz-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="2.5" y="5" width="13" height="14" rx="2.5"/>
+                <path d="M15.5 10.5l6-3.5v10l-6-3.5"/>
+              </svg>
+            </div>
+            <video id="video-preview" class="dz-video" muted hidden></video>
+            <p id="video-dz-text" class="dz-text">点击或拖拽视频到此处</p>
+          </div>
+          <button id="btn-video" class="btn btn-block">开始识别视频</button>
+
+          <div class="progress-box" id="video-progress" hidden>
+            <div class="progress"><span id="video-bar"></span></div>
+            <p class="progress-text" id="video-progress-text">准备中…</p>
+          </div>
+
+          <div class="rules">
+            <p class="rules-title">处理说明</p>
+            <p class="rules-note">系统每 0.5 秒做一次 YOLO 检测，并用 IoU 跟踪车辆，生成带标注的识别视频；同一辆车只记录一次，避免重复告警。建议时长 10–30 秒。</p>
+          </div>
+        </div>
+
+        <div class="card panel">
+          <div class="card-head">
+            <h3>识别视频</h3>
+            <span class="hint" id="video-meta">--</span>
+          </div>
+          <div id="video-empty" class="empty">
+            <div class="empty-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M20 6.5L9.5 17 4 11.5"/>
+              </svg>
+            </div>
+            <p>暂无结果</p>
+            <span>请先上传视频，再点击「开始识别视频」</span>
+          </div>
+          <div id="video-result" hidden>
+            <div class="summary" id="video-summary"></div>
+            <video id="annotated-video" class="annotated-video" controls playsinline></video>
+            <div class="table-wrap">
+              <table class="table">
+                <thead><tr><th>车牌</th><th>车型</th><th>通行结论</th><th>车主</th><th>违规项</th><th>出现时长</th></tr></thead>
+                <tbody id="video-tbody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 识别记录 -->
+  <section id="page-records" class="page" hidden>
+    <div class="page-head">
+      <div class="page-head-text">
+        <h2>识别记录</h2>
+        <p>每一次图片与视频识别都会自动归档，可按类型与日期筛选回看</p>
+      </div>
+      <div class="filters">
+        <div class="seg" id="record-filter">
+          <button class="seg-btn active" data-filter="all">全部</button>
+          <button class="seg-btn" data-filter="violation">仅违规</button>
+          <button class="seg-btn" data-filter="image">图片</button>
+          <button class="seg-btn" data-filter="video">视频</button>
+        </div>
+        <label class="date-field">
+          <span>日期</span>
+          <input type="date" id="records-date" class="select">
+        </label>
+        <button id="btn-order" class="btn btn-ghost btn-sm">时间：新→旧</button>
+        <button id="btn-refresh-records" class="btn btn-ghost btn-sm">刷新</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head">
+        <h3>历史识别明细</h3>
+        <span class="hint" id="records-count">--</span>
+      </div>
+      <div class="table-wrap">
+        <table class="table">
+          <thead>
+            <tr><th>时间</th><th>截图</th><th>车牌</th><th>车型</th><th>车主</th><th>来源</th><th>违规项</th><th>状态</th><th id="th-action" hidden>操作</th></tr>
+          </thead>
+          <tbody id="records-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- 数据统计 -->
+  <section id="page-stats" class="page" hidden>
+    <div class="page-head">
+      <div class="page-head-text">
+        <h2>数据统计</h2>
+        <p>按日期查看各类型车辆出现次数，并分析当天的违规高峰时段</p>
+      </div>
+      <div class="filters">
+        <span class="stats-countdown" id="stats-countdown">每 60 秒自动刷新</span>
+        <label class="date-field">
+          <span>统计日期</span>
+          <input type="date" id="stats-date" class="select">
+        </label>
+        <button id="btn-refresh-stats" class="btn btn-ghost btn-sm">刷新</button>
+      </div>
+    </div>
+
+    <div class="stats-cards" id="stats-cards"></div>
+
+    <div class="stats-grid">
+      <div class="card">
+        <div class="card-head">
+          <h3>各类型车辆出现次数</h3>
+          <span class="hint" id="stats-pie-hint">按识别记录统计</span>
+        </div>
+        <div class="pie-wrap">
+          <div id="stats-pie" class="pie-box"></div>
+          <div id="stats-legend" class="pie-legend"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <h3>违规高峰时段</h3>
+          <span class="hint">按违规记录数排序</span>
+        </div>
+        <div id="stats-peak" class="peak-box"></div>
+        <p class="stats-subtitle">全天 24 小时分布</p>
+        <div id="stats-hourly" class="hourly-chart"></div>
+      </div>
+    </div>
+
+    <div class="card hour-detail-card">
+      <div class="card-head">
+        <h3>单小时识别明细</h3>
+        <select id="stats-hour" class="select select-sm">
+          <option value="">选择小时…</option>
+        </select>
+      </div>
+      <div id="stats-hour-body" class="hour-detail-body">
+        <div class="stats-empty">选择小时或点击上方柱状图查看</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 我的记录（普通用户） -->
+  <section id="page-mine" class="page" hidden>
+    <div class="page-head">
+      <div class="page-head-text">
+        <h2>我的记录</h2>
+        <p>绑定手机号、邮箱与车牌，查看自己车辆的违章记录与罚款</p>
+      </div>
+    </div>
+
+    <div class="mine-grid">
+      <div class="card">
+        <div class="card-head">
+          <h3>账号绑定</h3>
+          <span class="hint">手机号 / 邮箱 / 车牌</span>
+        </div>
+        <div class="bind-form">
+          <label class="mine-field">
+            <span>手机号</span>
+            <input id="my-phone" class="select" placeholder="请输入手机号">
+          </label>
+          <label class="mine-field">
+            <span>邮箱</span>
+            <input id="my-email" class="select" placeholder="请输入邮箱">
+          </label>
+          <button id="btn-save-contact" class="btn btn-block">保存联系方式</button>
+
+          <div class="bind-divider"></div>
+
+          <div class="plate-add">
+            <input id="my-plate" class="select" placeholder="输入车牌号，如 沪A12345">
+            <button id="btn-add-plate" class="btn">绑定车牌</button>
+          </div>
+          <div id="my-plates" class="plate-chips"></div>
+          <p class="hint">绑定车牌后，系统会自动汇总这些车牌的违章记录</p>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <h3>我的违章记录</h3>
+          <span class="hint" id="mine-hint">--</span>
+        </div>
+        <div id="mine-summary" class="summary"></div>
+        <div id="mine-list" class="mine-list"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 用户管理（管理员） -->
+  <section id="page-users" class="page" hidden>
+    <div class="page-head">
+      <div class="page-head-text">
+        <h2>用户管理</h2>
+        <p>查看注册用户，可重置用户的手机号、邮箱与密码</p>
+      </div>
+      <button id="btn-refresh-users" class="btn btn-ghost btn-sm">刷新</button>
+    </div>
+    <div class="card">
+      <div class="card-head">
+        <h3>注册用户</h3>
+        <span class="hint" id="users-hint">--</span>
+      </div>
+      <div class="table-wrap">
+        <table class="table">
+          <thead>
+            <tr><th>账号</th><th>昵称</th><th>手机号</th><th>邮箱</th><th>绑定车牌</th><th>操作</th></tr>
+          </thead>
+          <tbody id="users-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+</main>
+</div>
+
+<div id="profile-mask" class="profile-mask" hidden>
+  <div class="profile-card" role="dialog" aria-modal="true" aria-label="个人中心">
+    <div class="profile-head">
+      <div class="profile-avatar" id="profile-avatar">管</div>
+      <div class="profile-title-box">
+        <p class="profile-title">个人中心</p>
+        <p class="profile-sub">当前登录账号信息与系统状态</p>
+      </div>
+      <button class="profile-close" id="btn-profile-close" aria-label="关闭">×</button>
+    </div>
+    <div class="profile-rows">
+      <div class="profile-row"><span>登录账号</span><b id="pf-username">--</b></div>
+      <div class="profile-row"><span>账号名称</span><b id="pf-name">--</b></div>
+      <div class="profile-row"><span>账号角色</span><b id="pf-role">--</b></div>
+      <div class="profile-row"><span>手机号</span><b id="pf-phone">--</b></div>
+      <div class="profile-row"><span>邮箱</span><b id="pf-email">--</b></div>
+      <div class="profile-row"><span>检测模型</span><b id="pf-detector">--</b></div>
+      <div class="profile-row"><span>车牌识别</span><b id="pf-plate">--</b></div>
+      <div class="profile-row"><span>短信服务</span><b id="pf-sms">--</b></div>
+      <div class="profile-row"><span>高架限速</span><b id="pf-speed">--</b></div>
+    </div>
+    <div class="profile-foot">
+      <button class="btn btn-ghost" id="btn-profile-cancel">关闭</button>
+      <button class="btn" id="btn-profile-logout">退出登录</button>
+    </div>
+  </div>
+</div>
+
+<div id="user-mask" class="profile-mask" hidden>
+  <div class="profile-card" role="dialog" aria-modal="true" aria-label="重置用户">
+    <div class="profile-head">
+      <div class="profile-avatar" id="eu-avatar">用</div>
+      <div class="profile-title-box">
+        <p class="profile-title">重置用户</p>
+        <p class="profile-sub" id="eu-sub">修改手机号、邮箱或密码</p>
+      </div>
+    </div>
+    <div class="profile-rows user-edit-rows">
+      <label class="mine-field">
+        <span>手机号</span>
+        <input id="eu-phone" class="select" placeholder="留空表示未绑定">
+      </label>
+      <label class="mine-field">
+        <span>邮箱</span>
+        <input id="eu-email" class="select" placeholder="留空表示未绑定">
+      </label>
+      <label class="mine-field">
+        <span>新密码</span>
+        <input id="eu-password" type="password" class="select" placeholder="留空则不修改密码" autocomplete="new-password">
+      </label>
+    </div>
+    <div class="profile-foot">
+      <button class="btn btn-ghost" id="eu-cancel">取消</button>
+      <button class="btn" id="eu-save">保存</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="toast" hidden></div>
+<script src="/static/js/main.js"></script>
+</body>
+</html>

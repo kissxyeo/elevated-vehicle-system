@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: elevated-vehicle-system
+    runtime: docker
+    plan: standard
+    healthCheckPath: /login
+    envVars:
+      - key: SECRET_KEY
+        generateValue: true
+      - key: EVS_DATA_DIR
+        value: /data
+    disk:
+      name: evs-data
+      mountPath: /data
+      sizeGB: 1

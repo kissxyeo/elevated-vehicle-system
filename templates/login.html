@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>登录 · 高架车辆智能识别系统</title>
+<link rel="icon" type="image/svg+xml" href="/static/img/logo.svg">
+<link rel="alternate icon" href="/static/img/favicon.ico">
+<link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body class="login-page">
+
+<div class="bg-aura" aria-hidden="true">
+  <span class="aura aura-1"></span>
+  <span class="aura aura-2"></span>
+  <span class="aura aura-3"></span>
+</div>
+
+<div class="login-deco" aria-hidden="true">
+  <svg width="0" height="0" class="deco-sprite">
+    <symbol id="deco-car" viewBox="0 0 200 110">
+      <ellipse cx="100" cy="92" rx="78" ry="6" fill="#f2f2f2"/>
+      <path d="M52 58 C56 40 68 32 84 32 L118 32 C136 32 150 42 154 58 Z" fill="#dcdcdc"/>
+      <rect x="68" y="40" width="28" height="14" rx="5" fill="#ffffff"/>
+      <rect x="102" y="40" width="34" height="14" rx="5" fill="#ffffff"/>
+      <rect x="18" y="58" width="164" height="26" rx="13" fill="#dcdcdc"/>
+      <rect x="166" y="64" width="10" height="6" rx="3" fill="#ffffff"/>
+      <line x1="100" y1="61" x2="100" y2="80" stroke="#ffffff" stroke-width="2"/>
+      <circle cx="54" cy="84" r="15" fill="#cfcfcf"/>
+      <circle cx="146" cy="84" r="15" fill="#cfcfcf"/>
+      <circle cx="54" cy="84" r="7" fill="#ffffff"/>
+      <circle cx="146" cy="84" r="7" fill="#ffffff"/>
+    </symbol>
+  </svg>
+
+  <div class="deco-item deco-left">
+    <svg class="deco-car" viewBox="0 0 200 110"><use href="#deco-car"/></svg>
+    <div class="deco-lane"></div>
+  </div>
+  <div class="deco-item deco-right">
+    <svg class="deco-car" viewBox="0 0 200 110"><use href="#deco-car"/></svg>
+    <div class="deco-lane"></div>
+  </div>
+</div>
+
+<div class="login-wrap">
+  <div class="login-logo">
+    <img src="/static/img/logo.svg" alt="系统图标">
+  </div>
+  <h1 class="login-title">高架车辆智能识别系统</h1>
+  <p class="login-subtitle">ELEVATED HIGHWAY VEHICLE RECOGNITION</p>
+
+  <form class="login-card" id="login-form" autocomplete="off">
+      <div class="mode-switch login-role" role="tablist">
+        <button type="button" class="mode-btn active" data-role="admin">管理员登录</button>
+        <button type="button" class="mode-btn" data-role="user">用户登录</button>
+      </div>
+
+      <div id="login-fields">
+        <label class="login-field">
+          <span class="field-label">账号</span>
+          <input id="username" name="username" type="text" placeholder="请输入账号" value="{{ default_user }}" required>
+        </label>
+
+        <label class="login-field">
+          <span class="field-label">密码</span>
+          <input id="password" name="password" type="password" placeholder="请输入密码" required>
+        </label>
+
+        <p class="login-error" id="login-error" hidden></p>
+
+        <button type="submit" class="login-btn" id="login-btn">登 录</button>
+
+        <div class="login-switch ghost-hide" id="to-register">
+          还没有账号？<button type="button" class="link-btn" id="btn-to-register">立即注册</button>
+        </div>
+
+        <div class="demo-box">
+          <div class="demo-text">
+            <b>演示账号</b>
+            <span id="demo-cred">管理员：{{ default_user }}　·　密码 {{ default_pass }}</span>
+          </div>
+          <button type="button" class="demo-btn" id="fill-demo">一键填入</button>
+        </div>
+      </div>
+
+      <div id="register-fields" hidden>
+        <label class="login-field">
+          <span class="field-label">昵称</span>
+          <input id="reg-name" type="text" placeholder="请输入昵称" autocomplete="off">
+        </label>
+        <label class="login-field">
+          <span class="field-label">手机号 / 邮箱</span>
+          <input id="reg-account" type="text" placeholder="手机号或邮箱，用于登录" autocomplete="off">
+        </label>
+        <label class="login-field">
+          <span class="field-label">密码</span>
+          <input id="reg-password" type="password" placeholder="请设置密码（至少 6 位）" autocomplete="off">
+        </label>
+        <label class="login-field">
+          <span class="field-label">确认密码</span>
+          <input id="reg-password2" type="password" placeholder="请再次输入密码" autocomplete="off">
+        </label>
+
+        <p class="login-error" id="register-error" hidden></p>
+
+        <button type="button" class="login-btn" id="register-btn">注 册</button>
+        <div class="login-switch">
+          <button type="button" class="link-btn" id="btn-back-login">返回登录</button>
+        </div>
+      </div>
+  </form>
+
+  <p class="login-footer">基于 YOLOv8 · Flask · SQLite 构建</p>
+</div>
+
+<script>
+var CREDS = {
+  admin: { label: '管理员', user: '{{ default_user }}', pass: '{{ default_pass }}' },
+  user: { label: '普通用户', user: '{{ user_user }}', pass: '{{ user_pass }}' }
+};
+var currentRole = 'admin';
+var loginFields = document.getElementById('login-fields');
+var regFields = document.getElementById('register-fields');
+
+function showMsg(id, text, ok) {
+  var el = document.getElementById(id);
+  el.textContent = text || '';
+  el.hidden = !text;
+  el.classList.toggle('ok', !!ok);
+}
+
+function showRegister(show) {
+  loginFields.hidden = show;
+  regFields.hidden = !show;
+  showMsg('register-error', '');
+  if (show) document.getElementById('reg-name').focus();
+}
+
+function setRole(role) {
+  currentRole = role;
+  var btns = document.querySelectorAll('.login-role .mode-btn');
+  for (var i = 0; i < btns.length; i++) {
+    btns[i].classList.toggle('active', btns[i].dataset.role === role);
+  }
+  var c = CREDS[role];
+  document.getElementById('demo-cred').textContent = c.label + '：' + c.user + '　·　密码 ' + c.pass;
+  document.getElementById('username').placeholder = role === 'user' ? '手机号 / 邮箱 / 用户名' : '请输入账号';
+  document.getElementById('to-register').classList.toggle('ghost-hide', role !== 'user');
+  showMsg('login-error', '');
+  showRegister(false);
+}
+
+var roleBtns = document.querySelectorAll('.login-role .mode-btn');
+for (var i = 0; i < roleBtns.length; i++) {
+  roleBtns[i].addEventListener('click', function () { setRole(this.dataset.role); });
+}
+
+document.getElementById('btn-to-register').addEventListener('click', function () { showRegister(true); });
+document.getElementById('btn-back-login').addEventListener('click', function () { showRegister(false); });
+
+document.getElementById('fill-demo').addEventListener('click', function () {
+  var c = CREDS[currentRole];
+  document.getElementById('username').value = c.user;
+  document.getElementById('password').value = c.pass;
+});
+
+document.getElementById('register-btn').addEventListener('click', function () {
+  var btn = this;
+  var name = document.getElementById('reg-name').value.trim();
+  var account = document.getElementById('reg-account').value.trim();
+  var pw = document.getElementById('reg-password').value;
+  var pw2 = document.getElementById('reg-password2').value;
+  var isPhone = /^1[3-9]\d{9}$/.test(account);
+  var isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(account);
+  if (!name) { showMsg('register-error', '请填写昵称'); return; }
+  if (!isPhone && !isEmail) { showMsg('register-error', '请输入正确的手机号或邮箱'); return; }
+  if (pw.length < 6) { showMsg('register-error', '密码至少需要 6 位'); return; }
+  if (pw !== pw2) { showMsg('register-error', '两次输入的密码不一致'); return; }
+
+  btn.disabled = true;
+  btn.textContent = '注册中…';
+  fetch('/api/register', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name: name, account: account, password: pw })
+  }).then(function (r) {
+    return r.json().then(function (d) { return { ok: r.ok, d: d }; });
+  }).then(function (res) {
+    if (!res.ok) throw new Error(res.d.error || '注册失败');
+    showRegister(false);
+    document.getElementById('username').value = account;
+    document.getElementById('password').value = '';
+    showMsg('login-error', '注册成功，请使用手机号或邮箱登录', true);
+    document.getElementById('username').focus();
+  }).catch(function (e) {
+    showMsg('register-error', e.message);
+  }).then(function () {
+    btn.disabled = false;
+    btn.textContent = '注 册';
+  });
+});
+
+document.getElementById('login-form').addEventListener('submit', function (e) {
+  e.preventDefault();
+  if (!regFields.hidden) { document.getElementById('register-btn').click(); return; }
+  var btn = document.getElementById('login-btn');
+  var err = document.getElementById('login-error');
+  err.hidden = true;
+  btn.disabled = true;
+  btn.textContent = '登录中…';
+  fetch('/api/login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      username: document.getElementById('username').value.trim(),
+      password: document.getElementById('password').value,
+      role: currentRole
+    })
+  }).then(function (r) {
+    return r.json().then(function (d) { return { ok: r.ok, d: d }; });
+  }).then(function (res) {
+    if (!res.ok) throw new Error(res.d.error || '登录失败');
+    try { sessionStorage.setItem('evs_auth', '1'); } catch (e) { }
+    window.location.href = '/';
+  }).catch(function (e) {
+    err.textContent = e.message;
+    err.hidden = false;
+    err.classList.remove('ok');
+    btn.disabled = false;
+    btn.textContent = '登 录';
+  });
+});
+</script>
+</body>
+</html>
